@@ -85,12 +85,7 @@ BOOKS: list[Book] = [
 ]
 
 BOOKS_BY_SLUG = {b["slug"]: b for b in BOOKS}
-BOOKS_BY_ID = {b["id"]: b for b in BOOKS}
 
 
 def get_book(slug: str) -> Book | None:
     return BOOKS_BY_SLUG.get(slug)
-
-
-def get_book_by_id(book_id: int) -> Book | None:
-    return BOOKS_BY_ID.get(book_id)

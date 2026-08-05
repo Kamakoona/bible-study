@@ -17,7 +17,6 @@ const PREFS_KEY = "bible-study-reader-prefs";
 const state = {
   books: [],
   versions: [],
-  allVersions: [],
   bookSlug: "john",
   chapter: 3,
   compareVersion: "saenew",
@@ -27,9 +26,6 @@ const state = {
   size: "md",
   searchQuery: "",
   searchHitIndex: 0,
-  globalSearchVersion: "kor",
-  globalSearchResults: [],
-  pendingJumpVerse: null,
 };
 
 const els = {
@@ -38,10 +34,6 @@ const els = {
   versionSelect: document.getElementById("version-select"),
   fontSelect: document.getElementById("font-select"),
   sizeSelect: document.getElementById("size-select"),
-  globalSearchVersion: document.getElementById("global-search-version"),
-  globalSearchInput: document.getElementById("global-search-input"),
-  globalSearchBtn: document.getElementById("global-search-btn"),
-  globalSearchResults: document.getElementById("global-search-results"),
   searchInput: document.getElementById("search-input"),
   searchStatus: document.getElementById("search-status"),
   searchNav: document.querySelector(".search-nav"),
@@ -138,116 +130,6 @@ function fillVersions() {
     state.versions.find((v) => v.available);
   state.compareVersion = preferred?.id || "niv";
   els.versionSelect.value = state.compareVersion;
-}
-
-function fillGlobalSearchVersions() {
-  const byId = new Map();
-  for (const v of state.allVersions.length ? state.allVersions : state.versions) {
-    if (v.available && v.searchable) byId.set(v.id, v);
-  }
-  if (!byId.has("kor")) {
-    byId.set("kor", { id: "kor", label: "개역한글" });
-  }
-  els.globalSearchVersion.innerHTML = "";
-  for (const v of byId.values()) {
-    const opt = document.createElement("option");
-    opt.value = v.id;
-    opt.textContent = v.label;
-    els.globalSearchVersion.appendChild(opt);
-  }
-  if (!byId.has(state.globalSearchVersion)) {
-    state.globalSearchVersion = "kor";
-  }
-  els.globalSearchVersion.value = state.globalSearchVersion;
-}
-
-function hideGlobalSearchResults() {
-  els.globalSearchResults.hidden = true;
-  els.globalSearchResults.innerHTML = "";
-}
-
-function renderGlobalSearchResults(data) {
-  const results = data.results || [];
-  state.globalSearchResults = results;
-  if (!results.length) {
-    els.globalSearchResults.innerHTML = `<p class="global-search-empty">「${escapeHtml(data.query)}」 검색 결과가 없습니다.</p>`;
-    els.globalSearchResults.hidden = false;
-    return;
-  }
-
-  const totalLabel = data.total > results.length ? `${results.length}/${data.total}` : String(results.length);
-  const items = results
-    .map((item, index) => {
-      const ref = `${item.bookName} ${item.chapter}:${item.verse}`;
-      return `
-        <button type="button" class="global-search-item" data-index="${index}">
-          <span class="global-search-ref">${escapeHtml(ref)}</span>
-          <span class="global-search-text">${escapeHtml(item.text)}</span>
-        </button>
-      `;
-    })
-    .join("");
-
-  els.globalSearchResults.innerHTML = `
-    <div class="global-search-meta">${escapeHtml(data.versionLabel)} · ${totalLabel}건</div>
-    <div class="global-search-list">${items}</div>
-  `;
-  els.globalSearchResults.hidden = false;
-  els.globalSearchResults.querySelectorAll(".global-search-item").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const item = state.globalSearchResults[Number(btn.dataset.index)];
-      if (item) jumpToSearchResult(item, data.query);
-    });
-  });
-}
-
-async function runGlobalSearch() {
-  const q = els.globalSearchInput.value.trim();
-  state.globalSearchVersion = els.globalSearchVersion.value;
-  if (!q) {
-    hideGlobalSearchResults();
-    els.globalSearchInput.focus();
-    return;
-  }
-
-  els.globalSearchResults.hidden = false;
-  els.globalSearchResults.innerHTML = `<p class="global-search-empty">검색 중…</p>`;
-  els.globalSearchBtn.disabled = true;
-  try {
-    const res = await api(
-      `/api/search?q=${encodeURIComponent(q)}&version=${encodeURIComponent(state.globalSearchVersion)}&limit=40`,
-    );
-    renderGlobalSearchResults(res.data);
-  } catch (err) {
-    els.globalSearchResults.innerHTML = `<p class="global-search-empty error">${escapeHtml(err.message)}</p>`;
-    els.globalSearchResults.hidden = false;
-  } finally {
-    els.globalSearchBtn.disabled = false;
-  }
-}
-
-async function jumpToSearchResult(item, query) {
-  hideGlobalSearchResults();
-  state.bookSlug = item.book;
-  state.chapter = item.chapter;
-  state.pendingJumpVerse = item.verse;
-  state.searchQuery = query;
-  els.searchInput.value = query;
-  state.searchHitIndex = 0;
-
-  // If searching a compare version, switch the right pane to it
-  if (item && state.globalSearchVersion !== "kor") {
-    const meta = state.versions.find((v) => v.id === state.globalSearchVersion && v.available);
-    if (meta) {
-      state.compareVersion = state.globalSearchVersion;
-      els.versionSelect.value = state.compareVersion;
-    }
-  }
-
-  els.bookSelect.value = state.bookSlug;
-  fillChapters();
-  els.chapterSelect.value = String(state.chapter);
-  await loadPanes();
 }
 
 function updateNavButtons() {
@@ -571,7 +453,6 @@ async function loadPanes() {
       state.searchHitIndex = 0;
       updateSearchUI();
       updateSharedScrollbar();
-      finishPendingJump();
     } catch (err) {
       els.leftBody.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
     }
@@ -605,12 +486,6 @@ async function loadPanes() {
   state.searchHitIndex = 0;
   updateSearchUI();
   updateSharedScrollbar();
-  if (state.pendingJumpVerse != null) {
-    const verse = state.pendingJumpVerse;
-    state.pendingJumpVerse = null;
-    syncHighlight(verse);
-    scrollToSharedVerse(String(verse));
-  }
 }
 
 function goPrev() {
@@ -675,26 +550,6 @@ function bindEvents() {
   });
   els.prevBtn.addEventListener("click", goPrev);
   els.nextBtn.addEventListener("click", goNext);
-  els.globalSearchBtn.addEventListener("click", () => {
-    runGlobalSearch();
-  });
-  els.globalSearchVersion.addEventListener("change", () => {
-    state.globalSearchVersion = els.globalSearchVersion.value;
-  });
-  els.globalSearchInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      runGlobalSearch();
-    }
-    if (e.key === "Escape") {
-      hideGlobalSearchResults();
-      els.globalSearchInput.blur();
-    }
-  });
-  document.addEventListener("click", (e) => {
-    const root = e.target.closest(".global-search");
-    if (!root) hideGlobalSearchResults();
-  });
   els.searchInput.addEventListener("input", () => {
     state.searchQuery = els.searchInput.value;
     state.searchHitIndex = 0;
@@ -734,15 +589,13 @@ async function init() {
   bindSharedScroll();
   const [booksRes, versionsRes] = await Promise.all([
     api("/api/books"),
-    api("/api/versions"),
+    api("/api/versions?pane=right"),
   ]);
   state.books = booksRes.data;
-  state.allVersions = versionsRes.data;
-  state.versions = versionsRes.data.filter((v) => v.pane === "right");
+  state.versions = versionsRes.data;
   fillBooks();
   fillChapters();
   fillVersions();
-  fillGlobalSearchVersions();
   await loadPanes();
 }
 

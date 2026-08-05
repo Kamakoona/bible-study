@@ -9,7 +9,7 @@ from typing import Any
 import httpx
 from bs4 import BeautifulSoup
 
-from app.books import Book, get_book, get_book_by_id
+from app.books import Book, get_book
 
 BSKOREA_URL = "https://www.bskorea.or.kr/bible/korbibReadpage.php"
 
@@ -20,7 +20,6 @@ VERSIONS: dict[str, dict[str, Any]] = {
         "label": "개역한글",
         "source": "bskorea",
         "bskorea": "HAN",
-        "bolls_search": "KRV",
         "pane": "left",
         "available": True,
         "note": "대한성서공회 (비공식 조회)",
@@ -30,7 +29,6 @@ VERSIONS: dict[str, dict[str, Any]] = {
         "label": "새번역",
         "source": "bskorea",
         "bskorea": "SAENEW",
-        "bolls_search": "RNKSV",
         "pane": "right",
         "available": True,
         "note": "대한성서공회 (비공식 조회)",
@@ -40,7 +38,6 @@ VERSIONS: dict[str, dict[str, Any]] = {
         "label": "개역개정",
         "source": "bskorea",
         "bskorea": "GAE",
-        "bolls_search": None,
         "pane": "right",
         "available": True,
         "note": "대한성서공회 (비공식 조회)",
@@ -50,7 +47,6 @@ VERSIONS: dict[str, dict[str, Any]] = {
         "label": "공동번역",
         "source": "bskorea",
         "bskorea": "COG",
-        "bolls_search": None,
         "pane": "right",
         "available": True,
         "note": "대한성서공회 (비공식 조회)",
@@ -60,7 +56,6 @@ VERSIONS: dict[str, dict[str, Any]] = {
         "label": "NIV",
         "source": "bolls",
         "bolls": "NIV",
-        "bolls_search": "NIV",
         "pane": "right",
         "available": True,
         "note": "bolls.life · © Biblica",
@@ -69,7 +64,6 @@ VERSIONS: dict[str, dict[str, Any]] = {
         "id": "living",
         "label": "현대인의 성경",
         "source": None,
-        "bolls_search": None,
         "pane": "right",
         "available": False,
         "note": "생명의말씀사 저작권으로 무료 API 없음",
@@ -91,7 +85,6 @@ def list_versions(*, pane: str | None = None) -> list[dict[str, Any]]:
             "available": v["available"],
             "note": v["note"],
             "pane": v["pane"],
-            "searchable": bool(v.get("bolls_search")),
         }
         for v in items
     ]
@@ -270,85 +263,3 @@ def _parse_bskorea_html(html: str) -> list[dict[str, Any]]:
 
     verses.sort(key=lambda v: v["number"])
     return verses
-
-
-async def search_bible(
-    version_id: str,
-    query: str,
-    *,
-    limit: int = 40,
-    page: int = 1,
-) -> dict[str, Any]:
-    version = VERSIONS.get(version_id)
-    if not version:
-        raise ValueError(f"알 수 없는 역본: {version_id}")
-    if not version["available"]:
-        raise ValueError(version["note"])
-
-    q = query.strip()
-    if len(q) < 1:
-        raise ValueError("검색어를 입력하세요.")
-    if len(q) > 80:
-        raise ValueError("검색어가 너무 깁니다.")
-
-    bolls_code = version.get("bolls_search")
-    if not bolls_code:
-        raise ValueError(f"{version['label']}은(는) 아직 성경 전체 검색을 지원하지 않습니다.")
-
-    limit = max(1, min(limit, 80))
-    page = max(1, page)
-    url = f"https://bolls.life/v2/find/{bolls_code}"
-    params = {
-        "search": q,
-        "match_case": "false",
-        "match_whole": "true",
-        "limit": str(limit),
-        "page": str(page),
-    }
-    headers = {
-        "User-Agent": "Mozilla/5.0 (compatible; bible-study/1.0)",
-        "Accept": "application/json",
-    }
-    async with httpx.AsyncClient(timeout=45.0, follow_redirects=True) as client:
-        resp = await client.get(url, params=params, headers=headers)
-        resp.raise_for_status()
-        payload = resp.json()
-
-    raw_results = payload.get("results") if isinstance(payload, dict) else None
-    if not isinstance(raw_results, list):
-        raise RuntimeError("검색 결과를 해석하지 못했습니다.")
-
-    results: list[dict[str, Any]] = []
-    for item in raw_results:
-        if not isinstance(item, dict):
-            continue
-        book = get_book_by_id(int(item.get("book") or 0))
-        if not book:
-            continue
-        raw = str(item.get("text") or "")
-        plain = _HTML_TAG_RE.sub(" ", raw)
-        plain = re.sub(r"\s+", " ", plain).strip()
-        if not plain:
-            continue
-        results.append(
-            {
-                "book": book["slug"],
-                "bookName": book["name_ko"],
-                "bookNameEn": book["name_en"],
-                "chapter": int(item.get("chapter") or 0),
-                "verse": int(item.get("verse") or 0),
-                "text": plain,
-            }
-        )
-
-    return {
-        "query": q,
-        "version": version["id"],
-        "versionLabel": version["label"],
-        "total": int(payload.get("exact_matches") or payload.get("total") or len(results)),
-        "page": page,
-        "limit": limit,
-        "results": results,
-        "source": "bolls",
-        "note": f"{version['label']} 전체 검색 (bolls.life)",
-    }

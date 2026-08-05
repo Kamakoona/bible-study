@@ -22,38 +22,42 @@
       </div>
 
       <div class="nav-controls" role="group" aria-label="본문 선택">
-        <div class="global-search" role="search">
-          <label class="control global-search-control" for="global-search-input">
-            <span class="global-search-label">성경 검색</span>
-            <div class="global-search-row">
-              <select id="global-search-version" aria-label="검색 역본"></select>
-              <div class="global-search-field">
-                <input
-                  id="global-search-input"
-                  type="search"
-                  placeholder="성경 전체에서 검색"
-                  autocomplete="off"
-                  spellcheck="false"
-                />
-                <button type="button" id="global-search-btn" class="global-search-btn" aria-label="검색">찾기</button>
+        <div class="nav-primary">
+          <label class="control search-control">
+            <span class="search-label">본문 검색</span>
+            <div class="search-field">
+              <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2" />
+                <path d="M15.5 15.5 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+              <input
+                id="search-input"
+                type="search"
+                placeholder="단어 또는 어구"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <span id="search-status" class="search-status" aria-live="polite"></span>
+              <div class="search-nav" hidden>
+                <button type="button" id="search-prev-btn" class="search-nav-btn" aria-label="이전 검색 결과">↑</button>
+                <button type="button" id="search-next-btn" class="search-nav-btn" aria-label="다음 검색 결과">↓</button>
               </div>
             </div>
           </label>
-          <div id="global-search-results" class="global-search-results" hidden></div>
-        </div>
 
-        <div class="passage-group" role="group" aria-label="책과 장">
-          <label class="control passage-control">
-            <span>책</span>
-            <select id="book-select"></select>
-          </label>
-          <label class="control passage-control">
-            <span>장</span>
-            <select id="chapter-select"></select>
-          </label>
-          <div class="nav-buttons">
-            <button type="button" id="prev-btn" class="passage-btn" aria-label="이전 장">←</button>
-            <button type="button" id="next-btn" class="passage-btn" aria-label="다음 장">→</button>
+          <div class="passage-group" role="group" aria-label="책과 장">
+            <label class="control passage-control">
+              <span>책</span>
+              <select id="book-select"></select>
+            </label>
+            <label class="control passage-control">
+              <span>장</span>
+              <select id="chapter-select"></select>
+            </label>
+            <div class="nav-buttons">
+              <button type="button" id="prev-btn" class="passage-btn" aria-label="이전 장">←</button>
+              <button type="button" id="next-btn" class="passage-btn" aria-label="다음 장">→</button>
+            </div>
           </div>
         </div>
 
@@ -77,28 +81,6 @@
             </select>
           </label>
         </div>
-
-        <label class="control search-control">
-          <span class="search-label">본문 검색</span>
-          <div class="search-field">
-            <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2" />
-              <path d="M15.5 15.5 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-            </svg>
-            <input
-              id="search-input"
-              type="search"
-              placeholder="단어 또는 어구"
-              autocomplete="off"
-              spellcheck="false"
-            />
-            <span id="search-status" class="search-status" aria-live="polite"></span>
-            <div class="search-nav" hidden>
-              <button type="button" id="search-prev-btn" class="search-nav-btn" aria-label="이전 검색 결과">↑</button>
-              <button type="button" id="search-next-btn" class="search-nav-btn" aria-label="다음 검색 결과">↓</button>
-            </div>
-          </div>
-        </label>
       </div>
     </header>
 
