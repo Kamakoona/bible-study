@@ -17,6 +17,7 @@ const PREFS_KEY = "bible-study-reader-prefs";
 const state = {
   books: [],
   versions: [],
+  allVersions: [],
   bookSlug: "john",
   chapter: 3,
   compareVersion: "saenew",
@@ -26,6 +27,9 @@ const state = {
   size: "md",
   searchQuery: "",
   searchHitIndex: 0,
+  globalSearchVersion: "kor",
+  globalSearchResults: [],
+  pendingJumpVerse: null,
 };
 
 const els = {
@@ -34,6 +38,10 @@ const els = {
   versionSelect: document.getElementById("version-select"),
   fontSelect: document.getElementById("font-select"),
   sizeSelect: document.getElementById("size-select"),
+  globalSearchVersion: document.getElementById("global-search-version"),
+  globalSearchInput: document.getElementById("global-search-input"),
+  globalSearchBtn: document.getElementById("global-search-btn"),
+  globalSearchResults: document.getElementById("global-search-results"),
   searchInput: document.getElementById("search-input"),
   searchStatus: document.getElementById("search-status"),
   searchNav: document.querySelector(".search-nav"),
@@ -46,6 +54,9 @@ const els = {
   leftMeta: document.getElementById("left-meta"),
   rightMeta: document.getElementById("right-meta"),
   rightTitle: document.getElementById("right-title"),
+  sharedScroll: document.getElementById("shared-scroll"),
+  scrollTrack: document.getElementById("shared-scroll-track"),
+  scrollThumb: document.getElementById("shared-scroll-thumb"),
 };
 
 function loadPrefs() {
@@ -129,6 +140,116 @@ function fillVersions() {
   els.versionSelect.value = state.compareVersion;
 }
 
+function fillGlobalSearchVersions() {
+  const byId = new Map();
+  for (const v of state.allVersions.length ? state.allVersions : state.versions) {
+    if (v.available && v.searchable) byId.set(v.id, v);
+  }
+  if (!byId.has("kor")) {
+    byId.set("kor", { id: "kor", label: "개역한글" });
+  }
+  els.globalSearchVersion.innerHTML = "";
+  for (const v of byId.values()) {
+    const opt = document.createElement("option");
+    opt.value = v.id;
+    opt.textContent = v.label;
+    els.globalSearchVersion.appendChild(opt);
+  }
+  if (!byId.has(state.globalSearchVersion)) {
+    state.globalSearchVersion = "kor";
+  }
+  els.globalSearchVersion.value = state.globalSearchVersion;
+}
+
+function hideGlobalSearchResults() {
+  els.globalSearchResults.hidden = true;
+  els.globalSearchResults.innerHTML = "";
+}
+
+function renderGlobalSearchResults(data) {
+  const results = data.results || [];
+  state.globalSearchResults = results;
+  if (!results.length) {
+    els.globalSearchResults.innerHTML = `<p class="global-search-empty">「${escapeHtml(data.query)}」 검색 결과가 없습니다.</p>`;
+    els.globalSearchResults.hidden = false;
+    return;
+  }
+
+  const totalLabel = data.total > results.length ? `${results.length}/${data.total}` : String(results.length);
+  const items = results
+    .map((item, index) => {
+      const ref = `${item.bookName} ${item.chapter}:${item.verse}`;
+      return `
+        <button type="button" class="global-search-item" data-index="${index}">
+          <span class="global-search-ref">${escapeHtml(ref)}</span>
+          <span class="global-search-text">${escapeHtml(item.text)}</span>
+        </button>
+      `;
+    })
+    .join("");
+
+  els.globalSearchResults.innerHTML = `
+    <div class="global-search-meta">${escapeHtml(data.versionLabel)} · ${totalLabel}건</div>
+    <div class="global-search-list">${items}</div>
+  `;
+  els.globalSearchResults.hidden = false;
+  els.globalSearchResults.querySelectorAll(".global-search-item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const item = state.globalSearchResults[Number(btn.dataset.index)];
+      if (item) jumpToSearchResult(item, data.query);
+    });
+  });
+}
+
+async function runGlobalSearch() {
+  const q = els.globalSearchInput.value.trim();
+  state.globalSearchVersion = els.globalSearchVersion.value;
+  if (!q) {
+    hideGlobalSearchResults();
+    els.globalSearchInput.focus();
+    return;
+  }
+
+  els.globalSearchResults.hidden = false;
+  els.globalSearchResults.innerHTML = `<p class="global-search-empty">검색 중…</p>`;
+  els.globalSearchBtn.disabled = true;
+  try {
+    const res = await api(
+      `/api/search?q=${encodeURIComponent(q)}&version=${encodeURIComponent(state.globalSearchVersion)}&limit=40`,
+    );
+    renderGlobalSearchResults(res.data);
+  } catch (err) {
+    els.globalSearchResults.innerHTML = `<p class="global-search-empty error">${escapeHtml(err.message)}</p>`;
+    els.globalSearchResults.hidden = false;
+  } finally {
+    els.globalSearchBtn.disabled = false;
+  }
+}
+
+async function jumpToSearchResult(item, query) {
+  hideGlobalSearchResults();
+  state.bookSlug = item.book;
+  state.chapter = item.chapter;
+  state.pendingJumpVerse = item.verse;
+  state.searchQuery = query;
+  els.searchInput.value = query;
+  state.searchHitIndex = 0;
+
+  // If searching a compare version, switch the right pane to it
+  if (item && state.globalSearchVersion !== "kor") {
+    const meta = state.versions.find((v) => v.id === state.globalSearchVersion && v.available);
+    if (meta) {
+      state.compareVersion = state.globalSearchVersion;
+      els.versionSelect.value = state.compareVersion;
+    }
+  }
+
+  els.bookSelect.value = state.bookSlug;
+  fillChapters();
+  els.chapterSelect.value = String(state.chapter);
+  await loadPanes();
+}
+
 function updateNavButtons() {
   const book = currentBook();
   const index = state.books.findIndex((b) => b.slug === state.bookSlug);
@@ -164,12 +285,14 @@ function updateSearchUI() {
   if (!query) {
     els.searchStatus.textContent = "";
     els.searchNav.hidden = true;
+    updateSharedScrollbar();
     return;
   }
 
   if (total === 0) {
     els.searchStatus.textContent = "없음";
     els.searchNav.hidden = true;
+    updateSharedScrollbar();
     return;
   }
 
@@ -184,7 +307,12 @@ function updateSearchUI() {
   });
 
   const current = hits[state.searchHitIndex];
-  current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  const verse = current?.closest(".verse");
+  if (verse?.dataset.verse) {
+    scrollToSharedVerse(verse.dataset.verse);
+  } else {
+    updateSharedScrollbar();
+  }
 }
 
 function applySearch() {
@@ -253,53 +381,157 @@ function escapeHtml(text) {
 
 let scrollSyncLock = false;
 
-function getAnchorVerse(container) {
-  const verses = container.querySelectorAll(".verse");
-  if (!verses.length) return null;
-  const probe = container.scrollTop + Math.min(56, container.clientHeight * 0.18);
-  let current = verses[0];
-  for (const verse of verses) {
-    if (verse.offsetTop <= probe) current = verse;
-    else break;
-  }
-  return current;
+function getScrollMax(container) {
+  return Math.max(0, container.scrollHeight - container.clientHeight);
 }
 
-function syncPaneScroll(source, target) {
-  if (scrollSyncLock) return;
-  if (!source.querySelector(".verse") || !target.querySelector(".verse")) return;
+function getSharedMax() {
+  return Math.max(getScrollMax(els.leftBody), getScrollMax(els.rightBody));
+}
 
-  const sourceVerse = getAnchorVerse(source);
-  if (!sourceVerse) return;
+function getSharedRatio() {
+  const leftMax = getScrollMax(els.leftBody);
+  const rightMax = getScrollMax(els.rightBody);
+  if (leftMax >= rightMax && leftMax > 0) return els.leftBody.scrollTop / leftMax;
+  if (rightMax > 0) return els.rightBody.scrollTop / rightMax;
+  return 0;
+}
 
-  const match = target.querySelector(`.verse[data-verse="${sourceVerse.dataset.verse}"]`);
-  scrollSyncLock = true;
-  if (match) {
-    const offset = sourceVerse.offsetTop - source.scrollTop;
-    target.scrollTop = Math.max(0, match.offsetTop - offset);
-  } else {
-    const maxSource = source.scrollHeight - source.clientHeight;
-    const maxTarget = target.scrollHeight - target.clientHeight;
-    if (maxSource > 0 && maxTarget > 0) {
-      target.scrollTop = (source.scrollTop / maxSource) * maxTarget;
-    }
+function updateSharedScrollbar(ratio = getSharedRatio()) {
+  const track = els.scrollTrack;
+  const thumb = els.scrollThumb;
+  const bar = els.sharedScroll;
+  if (!track || !thumb || !bar) return;
+
+  const max = getSharedMax();
+  const trackH = track.clientHeight;
+  if (trackH <= 0) return;
+
+  if (max <= 0) {
+    bar.classList.add("is-disabled");
+    bar.setAttribute("aria-valuenow", "0");
+    thumb.style.height = "100%";
+    thumb.style.transform = "translateY(0)";
+    return;
   }
+
+  bar.classList.remove("is-disabled");
+  const contentH = Math.max(els.leftBody.scrollHeight, els.rightBody.scrollHeight);
+  const viewH = Math.min(els.leftBody.clientHeight, els.rightBody.clientHeight) || trackH;
+  const thumbH = Math.min(trackH, Math.max(36, (viewH / Math.max(contentH, 1)) * trackH));
+  const travel = Math.max(0, trackH - thumbH);
+  const clamped = Math.min(1, Math.max(0, ratio));
+  thumb.style.height = `${thumbH}px`;
+  thumb.style.transform = `translateY(${clamped * travel}px)`;
+  bar.setAttribute("aria-valuenow", String(Math.round(clamped * 100)));
+}
+
+function applySharedRatio(ratio) {
+  const clamped = Math.min(1, Math.max(0, ratio));
+  scrollSyncLock = true;
+  for (const body of [els.leftBody, els.rightBody]) {
+    const max = getScrollMax(body);
+    body.scrollTop = clamped * max;
+  }
+  updateSharedScrollbar(clamped);
   requestAnimationFrame(() => {
     scrollSyncLock = false;
   });
 }
 
-function bindScrollSync() {
-  els.leftBody.addEventListener(
-    "scroll",
-    () => syncPaneScroll(els.leftBody, els.rightBody),
-    { passive: true },
-  );
-  els.rightBody.addEventListener(
-    "scroll",
-    () => syncPaneScroll(els.rightBody, els.leftBody),
-    { passive: true },
-  );
+function scrollToSharedVerse(verseNumber) {
+  const leftVerse = els.leftBody.querySelector(`.verse[data-verse="${verseNumber}"]`);
+  const rightVerse = els.rightBody.querySelector(`.verse[data-verse="${verseNumber}"]`);
+  scrollSyncLock = true;
+  if (leftVerse) {
+    els.leftBody.scrollTop = Math.max(0, leftVerse.offsetTop - els.leftBody.clientHeight * 0.35);
+  }
+  if (rightVerse) {
+    els.rightBody.scrollTop = Math.max(0, rightVerse.offsetTop - els.rightBody.clientHeight * 0.35);
+  }
+  updateSharedScrollbar(getSharedRatio());
+  requestAnimationFrame(() => {
+    scrollSyncLock = false;
+  });
+}
+
+function bindSharedScroll() {
+  const onWheel = (event) => {
+    if (getSharedMax() <= 0) return;
+    event.preventDefault();
+    const primary =
+      getScrollMax(els.leftBody) >= getScrollMax(els.rightBody) ? els.leftBody : els.rightBody;
+    const max = getScrollMax(primary);
+    if (max <= 0) return;
+    applySharedRatio((primary.scrollTop + event.deltaY) / max);
+  };
+
+  for (const body of [els.leftBody, els.rightBody]) {
+    body.addEventListener("wheel", onWheel, { passive: false });
+    body.addEventListener(
+      "scroll",
+      () => {
+        if (scrollSyncLock) return;
+        const max = getScrollMax(body);
+        if (max <= 0) return;
+        applySharedRatio(body.scrollTop / max);
+      },
+      { passive: true },
+    );
+  }
+
+  let dragging = false;
+  let dragOffsetY = 0;
+
+  const ratioFromPointer = (clientY) => {
+    const rect = els.scrollTrack.getBoundingClientRect();
+    const thumbH = els.scrollThumb.offsetHeight;
+    const travel = Math.max(1, rect.height - thumbH);
+    const y = clientY - rect.top - dragOffsetY;
+    return Math.min(1, Math.max(0, y / travel));
+  };
+
+  els.scrollThumb.addEventListener("pointerdown", (event) => {
+    if (els.sharedScroll.classList.contains("is-disabled")) return;
+    dragging = true;
+    dragOffsetY = event.clientY - els.scrollThumb.getBoundingClientRect().top;
+    els.scrollThumb.setPointerCapture(event.pointerId);
+    els.scrollThumb.classList.add("is-dragging");
+    event.preventDefault();
+  });
+
+  els.scrollThumb.addEventListener("pointermove", (event) => {
+    if (!dragging) return;
+    applySharedRatio(ratioFromPointer(event.clientY));
+  });
+
+  const endDrag = (event) => {
+    if (!dragging) return;
+    dragging = false;
+    dragOffsetY = 0;
+    els.scrollThumb.classList.remove("is-dragging");
+    try {
+      els.scrollThumb.releasePointerCapture(event.pointerId);
+    } catch {
+      /* already released */
+    }
+  };
+
+  els.scrollThumb.addEventListener("pointerup", endDrag);
+  els.scrollThumb.addEventListener("pointercancel", endDrag);
+
+  els.scrollTrack.addEventListener("pointerdown", (event) => {
+    if (event.target === els.scrollThumb) return;
+    if (els.sharedScroll.classList.contains("is-disabled")) return;
+    dragOffsetY = els.scrollThumb.offsetHeight / 2;
+    applySharedRatio(ratioFromPointer(event.clientY));
+  });
+
+  window.addEventListener("resize", () => updateSharedScrollbar());
+
+  const observer = new ResizeObserver(() => updateSharedScrollbar());
+  observer.observe(els.leftBody);
+  observer.observe(els.rightBody);
 }
 
 function syncHighlight(verseNumber) {
@@ -338,6 +570,8 @@ async function loadPanes() {
       renderVerses(els.leftBody, left.data);
       state.searchHitIndex = 0;
       updateSearchUI();
+      updateSharedScrollbar();
+      finishPendingJump();
     } catch (err) {
       els.leftBody.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
     }
@@ -370,6 +604,13 @@ async function loadPanes() {
   }
   state.searchHitIndex = 0;
   updateSearchUI();
+  updateSharedScrollbar();
+  if (state.pendingJumpVerse != null) {
+    const verse = state.pendingJumpVerse;
+    state.pendingJumpVerse = null;
+    syncHighlight(verse);
+    scrollToSharedVerse(String(verse));
+  }
 }
 
 function goPrev() {
@@ -434,6 +675,26 @@ function bindEvents() {
   });
   els.prevBtn.addEventListener("click", goPrev);
   els.nextBtn.addEventListener("click", goNext);
+  els.globalSearchBtn.addEventListener("click", () => {
+    runGlobalSearch();
+  });
+  els.globalSearchVersion.addEventListener("change", () => {
+    state.globalSearchVersion = els.globalSearchVersion.value;
+  });
+  els.globalSearchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      runGlobalSearch();
+    }
+    if (e.key === "Escape") {
+      hideGlobalSearchResults();
+      els.globalSearchInput.blur();
+    }
+  });
+  document.addEventListener("click", (e) => {
+    const root = e.target.closest(".global-search");
+    if (!root) hideGlobalSearchResults();
+  });
   els.searchInput.addEventListener("input", () => {
     state.searchQuery = els.searchInput.value;
     state.searchHitIndex = 0;
@@ -470,16 +731,18 @@ async function init() {
   loadPrefs();
   applyReaderStyle();
   bindEvents();
-  bindScrollSync();
+  bindSharedScroll();
   const [booksRes, versionsRes] = await Promise.all([
     api("/api/books"),
-    api("/api/versions?pane=right"),
+    api("/api/versions"),
   ]);
   state.books = booksRes.data;
-  state.versions = versionsRes.data;
+  state.allVersions = versionsRes.data;
+  state.versions = versionsRes.data.filter((v) => v.pane === "right");
   fillBooks();
   fillChapters();
   fillVersions();
+  fillGlobalSearchVersions();
   await loadPanes();
 }
 

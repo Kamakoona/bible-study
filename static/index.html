@@ -22,6 +22,26 @@
       </div>
 
       <div class="nav-controls" role="group" aria-label="본문 선택">
+        <div class="global-search" role="search">
+          <label class="control global-search-control" for="global-search-input">
+            <span class="global-search-label">성경 검색</span>
+            <div class="global-search-row">
+              <select id="global-search-version" aria-label="검색 역본"></select>
+              <div class="global-search-field">
+                <input
+                  id="global-search-input"
+                  type="search"
+                  placeholder="성경 전체에서 검색"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+                <button type="button" id="global-search-btn" class="global-search-btn" aria-label="검색">찾기</button>
+              </div>
+            </div>
+          </label>
+          <div id="global-search-results" class="global-search-results" hidden></div>
+        </div>
+
         <div class="passage-group" role="group" aria-label="책과 장">
           <label class="control passage-control">
             <span>책</span>
@@ -83,33 +103,51 @@
     </header>
 
     <main class="reader">
-      <section class="pane" aria-labelledby="left-title">
-        <header class="pane-head">
-          <div>
-            <h2 id="left-title">개역한글</h2>
-            <p class="pane-meta" id="left-meta">왼쪽 기준 역본</p>
+      <div class="reader-panes">
+        <section class="pane" aria-labelledby="left-title">
+          <header class="pane-head">
+            <div>
+              <h2 id="left-title">개역한글</h2>
+              <p class="pane-meta" id="left-meta">왼쪽 기준 역본</p>
+            </div>
+          </header>
+          <div class="pane-body" id="left-body">
+            <p class="placeholder">본문을 불러오는 중…</p>
           </div>
-        </header>
-        <div class="pane-body" id="left-body">
-          <p class="placeholder">본문을 불러오는 중…</p>
-        </div>
-      </section>
+        </section>
 
-      <section class="pane pane-compare" aria-labelledby="right-title">
-        <header class="pane-head">
-          <div>
-            <h2 id="right-title">대조 역본</h2>
-            <p class="pane-meta" id="right-meta">오른쪽에서 역본을 고르세요</p>
+        <section class="pane pane-compare" aria-labelledby="right-title">
+          <header class="pane-head">
+            <div>
+              <h2 id="right-title">대조 역본</h2>
+              <p class="pane-meta" id="right-meta">오른쪽에서 역본을 고르세요</p>
+            </div>
+            <label class="control version-control">
+              <span>역본</span>
+              <select id="version-select"></select>
+            </label>
+          </header>
+          <div class="pane-body" id="right-body">
+            <p class="placeholder">역본을 선택하세요</p>
           </div>
-          <label class="control version-control">
-            <span>역본</span>
-            <select id="version-select"></select>
-          </label>
-        </header>
-        <div class="pane-body" id="right-body">
-          <p class="placeholder">역본을 선택하세요</p>
+        </section>
+      </div>
+
+      <div
+        class="shared-scroll"
+        id="shared-scroll"
+        role="scrollbar"
+        aria-controls="left-body right-body"
+        aria-orientation="vertical"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0"
+        aria-label="본문 스크롤"
+      >
+        <div class="shared-scroll-track" id="shared-scroll-track">
+          <div class="shared-scroll-thumb" id="shared-scroll-thumb"></div>
         </div>
-      </section>
+      </div>
     </main>
 
     <footer class="foot">
