@@ -235,6 +235,9 @@ function renderVerses(container, chapterData, emptyMessage) {
     `;
     row.addEventListener("mouseenter", () => syncHighlight(verse.number));
     row.addEventListener("mouseleave", () => syncHighlight(null));
+    row.addEventListener("focus", () => syncHighlight(verse.number));
+    row.addEventListener("blur", () => syncHighlight(null));
+    row.tabIndex = 0;
     frag.appendChild(row);
   }
   container.appendChild(frag);
@@ -248,10 +251,65 @@ function escapeHtml(text) {
     .replaceAll('"', "&quot;");
 }
 
+let scrollSyncLock = false;
+
+function getAnchorVerse(container) {
+  const verses = container.querySelectorAll(".verse");
+  if (!verses.length) return null;
+  const probe = container.scrollTop + Math.min(56, container.clientHeight * 0.18);
+  let current = verses[0];
+  for (const verse of verses) {
+    if (verse.offsetTop <= probe) current = verse;
+    else break;
+  }
+  return current;
+}
+
+function syncPaneScroll(source, target) {
+  if (scrollSyncLock) return;
+  if (!source.querySelector(".verse") || !target.querySelector(".verse")) return;
+
+  const sourceVerse = getAnchorVerse(source);
+  if (!sourceVerse) return;
+
+  const match = target.querySelector(`.verse[data-verse="${sourceVerse.dataset.verse}"]`);
+  scrollSyncLock = true;
+  if (match) {
+    const offset = sourceVerse.offsetTop - source.scrollTop;
+    target.scrollTop = Math.max(0, match.offsetTop - offset);
+  } else {
+    const maxSource = source.scrollHeight - source.clientHeight;
+    const maxTarget = target.scrollHeight - target.clientHeight;
+    if (maxSource > 0 && maxTarget > 0) {
+      target.scrollTop = (source.scrollTop / maxSource) * maxTarget;
+    }
+  }
+  requestAnimationFrame(() => {
+    scrollSyncLock = false;
+  });
+}
+
+function bindScrollSync() {
+  els.leftBody.addEventListener(
+    "scroll",
+    () => syncPaneScroll(els.leftBody, els.rightBody),
+    { passive: true },
+  );
+  els.rightBody.addEventListener(
+    "scroll",
+    () => syncPaneScroll(els.rightBody, els.leftBody),
+    { passive: true },
+  );
+}
+
 function syncHighlight(verseNumber) {
+  const active = verseNumber != null ? String(verseNumber) : null;
   for (const pane of [els.leftBody, els.rightBody]) {
     pane.querySelectorAll(".verse").forEach((el) => {
-      el.classList.toggle("is-active", verseNumber != null && el.dataset.verse === String(verseNumber));
+      const on = active != null && el.dataset.verse === active;
+      el.classList.toggle("is-active", on);
+      if (on) el.setAttribute("aria-current", "true");
+      else el.removeAttribute("aria-current");
     });
   }
 }
@@ -412,6 +470,7 @@ async function init() {
   loadPrefs();
   applyReaderStyle();
   bindEvents();
+  bindScrollSync();
   const [booksRes, versionsRes] = await Promise.all([
     api("/api/books"),
     api("/api/versions?pane=right"),
