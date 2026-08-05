@@ -113,8 +113,77 @@ body {
   min-width: 6.5rem;
 }
 
+.search-control {
+  min-width: 14rem;
+}
+
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.search-field input {
+  width: 11rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 252, 246, 0.9);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.search-field input:focus {
+  outline: 2px solid rgba(42, 107, 116, 0.35);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.search-status {
+  min-width: 3.2rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.search-nav {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.search-nav[hidden] {
+  display: none;
+}
+
+.search-nav-btn {
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.85rem;
+}
+
 .version-control select {
   min-width: 11rem;
+}
+
+mark.search-hit {
+  padding: 0.05em 0.12em;
+  border-radius: 3px;
+  background: rgba(212, 168, 75, 0.45);
+  color: inherit;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+mark.search-hit.is-current {
+  background: rgba(212, 168, 75, 0.85);
+  outline: 1.5px solid rgba(140, 100, 20, 0.55);
+}
+
+.verse.has-hit {
+  background: rgba(212, 168, 75, 0.08);
 }
 
 .nav-buttons {
@@ -277,5 +346,19 @@ body {
 
   .brand-mark {
     font-size: 2rem;
+  }
+
+  .search-control {
+    min-width: 100%;
+  }
+
+  .search-field {
+    flex-wrap: wrap;
+  }
+
+  .search-field input {
+    flex: 1;
+    min-width: 10rem;
+    width: auto;
   }
 }

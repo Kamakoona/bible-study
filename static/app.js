@@ -24,6 +24,8 @@ const state = {
   rightVerses: [],
   font: "serif",
   size: "md",
+  searchQuery: "",
+  searchHitIndex: 0,
 };
 
 const els = {
@@ -32,6 +34,11 @@ const els = {
   versionSelect: document.getElementById("version-select"),
   fontSelect: document.getElementById("font-select"),
   sizeSelect: document.getElementById("size-select"),
+  searchInput: document.getElementById("search-input"),
+  searchStatus: document.getElementById("search-status"),
+  searchNav: document.querySelector(".search-nav"),
+  searchPrevBtn: document.getElementById("search-prev-btn"),
+  searchNextBtn: document.getElementById("search-next-btn"),
   prevBtn: document.getElementById("prev-btn"),
   nextBtn: document.getElementById("next-btn"),
   leftBody: document.getElementById("left-body"),
@@ -130,6 +137,73 @@ function updateNavButtons() {
     state.chapter >= book.chapters && index >= state.books.length - 1;
 }
 
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function highlightText(text, query) {
+  const escaped = escapeHtml(text);
+  const q = query.trim();
+  if (!q) return escaped;
+  const pattern = new RegExp(escapeRegExp(escapeHtml(q)), "gi");
+  return escaped.replace(pattern, (match) => `<mark class="search-hit">${match}</mark>`);
+}
+
+function getSearchHits() {
+  return [
+    ...els.leftBody.querySelectorAll("mark.search-hit"),
+    ...els.rightBody.querySelectorAll("mark.search-hit"),
+  ];
+}
+
+function updateSearchUI() {
+  const hits = getSearchHits();
+  const total = hits.length;
+  const query = state.searchQuery.trim();
+
+  if (!query) {
+    els.searchStatus.textContent = "";
+    els.searchNav.hidden = true;
+    return;
+  }
+
+  if (total === 0) {
+    els.searchStatus.textContent = "없음";
+    els.searchNav.hidden = true;
+    return;
+  }
+
+  if (state.searchHitIndex >= total) state.searchHitIndex = 0;
+  if (state.searchHitIndex < 0) state.searchHitIndex = total - 1;
+
+  els.searchStatus.textContent = `${state.searchHitIndex + 1}/${total}`;
+  els.searchNav.hidden = false;
+
+  hits.forEach((el, i) => {
+    el.classList.toggle("is-current", i === state.searchHitIndex);
+  });
+
+  const current = hits[state.searchHitIndex];
+  current?.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+function applySearch() {
+  renderVerses(els.leftBody, state.leftVerses);
+  if (state.rightVerses?.unavailable) {
+    renderVerses(els.rightBody, state.rightVerses);
+  } else if (state.rightVerses?.verses) {
+    renderVerses(els.rightBody, state.rightVerses);
+  }
+  updateSearchUI();
+}
+
+function moveSearchHit(delta) {
+  const hits = getSearchHits();
+  if (!hits.length) return;
+  state.searchHitIndex = (state.searchHitIndex + delta + hits.length) % hits.length;
+  updateSearchUI();
+}
+
 function renderVerses(container, chapterData, emptyMessage) {
   container.innerHTML = "";
   if (!chapterData) {
@@ -145,14 +219,19 @@ function renderVerses(container, chapterData, emptyMessage) {
     return;
   }
 
+  const query = state.searchQuery.trim();
   const frag = document.createDocumentFragment();
   for (const verse of chapterData.verses) {
     const row = document.createElement("article");
     row.className = "verse";
     row.dataset.verse = String(verse.number);
+    const highlighted = highlightText(verse.text, query);
+    if (query && highlighted.includes("<mark")) {
+      row.classList.add("has-hit");
+    }
     row.innerHTML = `
       <span class="verse-num">${verse.number}</span>
-      <p class="verse-text">${escapeHtml(verse.text)}</p>
+      <p class="verse-text">${highlighted}</p>
     `;
     row.addEventListener("mouseenter", () => syncHighlight(verse.number));
     row.addEventListener("mouseleave", () => syncHighlight(null));
@@ -199,6 +278,8 @@ async function loadPanes() {
       state.leftVerses = left.data;
       els.leftMeta.textContent = `${left.data.bookName} ${left.data.chapter}장 · ${left.data.note}`;
       renderVerses(els.leftBody, left.data);
+      state.searchHitIndex = 0;
+      updateSearchUI();
     } catch (err) {
       els.leftBody.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
     }
@@ -229,6 +310,8 @@ async function loadPanes() {
   } else {
     els.rightBody.innerHTML = `<p class="error">${escapeHtml(rightResult.reason.message)}</p>`;
   }
+  state.searchHitIndex = 0;
+  updateSearchUI();
 }
 
 function goPrev() {
@@ -293,10 +376,35 @@ function bindEvents() {
   });
   els.prevBtn.addEventListener("click", goPrev);
   els.nextBtn.addEventListener("click", goNext);
+  els.searchInput.addEventListener("input", () => {
+    state.searchQuery = els.searchInput.value;
+    state.searchHitIndex = 0;
+    applySearch();
+  });
+  els.searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      moveSearchHit(e.shiftKey ? -1 : 1);
+    }
+    if (e.key === "Escape") {
+      els.searchInput.value = "";
+      state.searchQuery = "";
+      state.searchHitIndex = 0;
+      applySearch();
+      els.searchInput.blur();
+    }
+  });
+  els.searchPrevBtn.addEventListener("click", () => moveSearchHit(-1));
+  els.searchNextBtn.addEventListener("click", () => moveSearchHit(1));
   window.addEventListener("keydown", (e) => {
     if (e.target.matches("input, textarea, select")) return;
     if (e.key === "ArrowLeft") goPrev();
     if (e.key === "ArrowRight") goNext();
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+      e.preventDefault();
+      els.searchInput.focus();
+      els.searchInput.select();
+    }
   });
 }
 

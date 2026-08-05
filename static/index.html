@@ -48,6 +48,23 @@
             <option value="xl">아주 큼</option>
           </select>
         </label>
+        <label class="control search-control">
+          <span>검색</span>
+          <div class="search-field">
+            <input
+              id="search-input"
+              type="search"
+              placeholder="단어 또는 어구"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <span id="search-status" class="search-status" aria-live="polite"></span>
+            <div class="search-nav" hidden>
+              <button type="button" id="search-prev-btn" class="ghost-btn search-nav-btn" aria-label="이전 검색 결과">↑</button>
+              <button type="button" id="search-next-btn" class="ghost-btn search-nav-btn" aria-label="다음 검색 결과">↓</button>
+            </div>
+          </div>
+        </label>
         <div class="nav-buttons">
           <button type="button" id="prev-btn" class="ghost-btn" aria-label="이전 장">←</button>
           <button type="button" id="next-btn" class="ghost-btn" aria-label="다음 장">→</button>
