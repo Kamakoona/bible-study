@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bible Study — 역본 대조</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Nanum+Myeongjo:wght@400;700&family=Noto+Sans+KR:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true"></div>
+
+    <header class="top">
+      <div class="brand">
+        <p class="brand-mark">Bible Study</p>
+        <p class="brand-sub">개역한글과 다른 역본을 나란히 읽기</p>
+      </div>
+
+      <div class="nav-controls" role="group" aria-label="본문 선택">
+        <label class="control">
+          <span>책</span>
+          <select id="book-select"></select>
+        </label>
+        <label class="control">
+          <span>장</span>
+          <select id="chapter-select"></select>
+        </label>
+        <label class="control">
+          <span>글씨체</span>
+          <select id="font-select">
+            <option value="serif">세리프</option>
+            <option value="myeongjo">나눔명조</option>
+            <option value="sans">고딕</option>
+            <option value="noto">노토 산스</option>
+          </select>
+        </label>
+        <label class="control">
+          <span>크기</span>
+          <select id="size-select">
+            <option value="sm">작음</option>
+            <option value="md" selected>보통</option>
+            <option value="lg">큼</option>
+            <option value="xl">아주 큼</option>
+          </select>
+        </label>
+        <div class="nav-buttons">
+          <button type="button" id="prev-btn" class="ghost-btn" aria-label="이전 장">←</button>
+          <button type="button" id="next-btn" class="ghost-btn" aria-label="다음 장">→</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="reader">
+      <section class="pane" aria-labelledby="left-title">
+        <header class="pane-head">
+          <div>
+            <h2 id="left-title">개역한글</h2>
+            <p class="pane-meta" id="left-meta">왼쪽 기준 역본</p>
+          </div>
+        </header>
+        <div class="pane-body" id="left-body">
+          <p class="placeholder">본문을 불러오는 중…</p>
+        </div>
+      </section>
+
+      <section class="pane pane-compare" aria-labelledby="right-title">
+        <header class="pane-head">
+          <div>
+            <h2 id="right-title">대조 역본</h2>
+            <p class="pane-meta" id="right-meta">오른쪽에서 역본을 고르세요</p>
+          </div>
+          <label class="control version-control">
+            <span>역본</span>
+            <select id="version-select"></select>
+          </label>
+        </header>
+        <div class="pane-body" id="right-body">
+          <p class="placeholder">역본을 선택하세요</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p>
+        개역한글·NIV: Midvash API · 새번역·개역개정·공동번역: 대한성서공회 웹 조회(비공식) ·
+        현대인의 성경은 무료 공개 API가 없어 선택할 수 없습니다.
+      </p>
+    </footer>
+
+    <script src="/static/app.js" type="module"></script>
+  </body>
+</html>

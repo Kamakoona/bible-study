@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+*.html.bak
+bskorea-*.html
+john3*.html
+check.html
+kor.json
+saenew.json
+niv.json
+gae.json
+.DS_Store
