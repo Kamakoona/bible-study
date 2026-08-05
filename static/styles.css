@@ -25,10 +25,14 @@
 html,
 body {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
+  height: 100dvh;
 }
 
 body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   color: var(--ink);
   font-family: var(--sans);
   background: var(--paper);
@@ -55,12 +59,20 @@ body {
 }
 
 .top {
+  position: relative;
+  z-index: 20;
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   align-items: end;
   justify-content: space-between;
   gap: 1.25rem 2rem;
-  padding: 1.5rem clamp(1rem, 3vw, 2.5rem) 1rem;
+  padding: 1.15rem clamp(1rem, 3vw, 2.5rem) 0.95rem;
+  border-bottom: 1px solid rgba(22, 32, 40, 0.1);
+  background:
+    linear-gradient(180deg, rgba(238, 243, 244, 0.94), rgba(232, 238, 240, 0.88));
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(22, 32, 40, 0.06);
   animation: rise 0.7s ease both;
 }
 
@@ -359,11 +371,13 @@ mark.search-hit.is-current {
 }
 
 .reader {
+  flex: 1 1 auto;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
-  padding: 0 clamp(1rem, 3vw, 2.5rem) 1.5rem;
-  min-height: calc(100vh - 11rem);
+  min-height: 0;
+  padding: 1rem clamp(1rem, 3vw, 2.5rem);
+  overflow: hidden;
   animation: rise 0.85s 0.08s ease both;
 }
 
@@ -371,6 +385,7 @@ mark.search-hit.is-current {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  height: 100%;
   border: 1px solid var(--line);
   border-radius: 18px;
   background: var(--pane);
@@ -380,6 +395,7 @@ mark.search-hit.is-current {
 }
 
 .pane-head {
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -405,10 +421,12 @@ mark.search-hit.is-current {
 }
 
 .pane-body {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   padding: 1rem 1.15rem 1.4rem;
   scroll-behavior: smooth;
+  overscroll-behavior: contain;
 }
 
 .verse {
@@ -456,7 +474,10 @@ mark.search-hit.is-current {
 }
 
 .foot {
-  padding: 0 clamp(1rem, 3vw, 2.5rem) 1.75rem;
+  flex: 0 0 auto;
+  padding: 0.65rem clamp(1rem, 3vw, 2.5rem) 0.9rem;
+  border-top: 1px solid rgba(22, 32, 40, 0.08);
+  background: rgba(232, 238, 240, 0.72);
   color: var(--ink-soft);
   font-size: 0.78rem;
   animation: rise 1s 0.15s ease both;
@@ -481,11 +502,13 @@ mark.search-hit.is-current {
 @media (max-width: 900px) {
   .reader {
     grid-template-columns: 1fr;
-    min-height: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .pane {
-    min-height: 55vh;
+    height: auto;
+    min-height: min(58dvh, 32rem);
   }
 
   .brand-mark {
