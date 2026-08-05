@@ -1,4 +1,4 @@
-"""Fetch Bible chapters from Midvash and Korean Bible Society."""
+"""Fetch Bible chapters from Korean Bible Society and bolls.life."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ from bs4 import BeautifulSoup
 
 from app.books import Book, get_book
 
-MIDVASH_BASE = "https://api.midvash.com/v1"
 BSKOREA_URL = "https://www.bskorea.or.kr/bible/korbibReadpage.php"
 
 # Local API version ids → fetch strategy
@@ -19,11 +18,11 @@ VERSIONS: dict[str, dict[str, Any]] = {
     "kor": {
         "id": "kor",
         "label": "개역한글",
-        "source": "midvash",
-        "midvash": "kor",
+        "source": "bskorea",
+        "bskorea": "HAN",
         "pane": "left",
         "available": True,
-        "note": "퍼블릭 도메인",
+        "note": "대한성서공회 (비공식 조회)",
     },
     "saenew": {
         "id": "saenew",
@@ -47,7 +46,7 @@ VERSIONS: dict[str, dict[str, Any]] = {
         "id": "common",
         "label": "공동번역",
         "source": "bskorea",
-        "bskorea": "KOR",
+        "bskorea": "COG",
         "pane": "right",
         "available": True,
         "note": "대한성서공회 (비공식 조회)",
@@ -55,11 +54,11 @@ VERSIONS: dict[str, dict[str, Any]] = {
     "niv": {
         "id": "niv",
         "label": "NIV",
-        "source": "midvash",
-        "midvash": "niv",
+        "source": "bolls",
+        "bolls": "NIV",
         "pane": "right",
         "available": True,
-        "note": "© Biblica",
+        "note": "bolls.life · © Biblica",
     },
     "living": {
         "id": "living",
@@ -128,10 +127,10 @@ async def fetch_chapter(version_id: str, book_slug: str, chapter: int) -> dict[s
     if cached:
         return cached
 
-    if version["source"] == "midvash":
-        data = await _fetch_midvash(version["midvash"], book, chapter, version)
-    elif version["source"] == "bskorea":
+    if version["source"] == "bskorea":
         data = await _fetch_bskorea(version["bskorea"], book, chapter, version)
+    elif version["source"] == "bolls":
+        data = await _fetch_bolls(version["bolls"], book, chapter, version)
     else:
         raise ValueError("이 역본은 조회할 수 없습니다.")
 
@@ -139,25 +138,43 @@ async def fetch_chapter(version_id: str, book_slug: str, chapter: int) -> dict[s
     return data
 
 
-async def _fetch_midvash(
-    midvash_slug: str,
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+async def _fetch_bolls(
+    translation: str,
     book: Book,
     chapter: int,
     version: dict[str, Any],
 ) -> dict[str, Any]:
-    url = f"{MIDVASH_BASE}/{midvash_slug}/{book['slug']}/{chapter}"
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.get(url)
+    url = f"https://bolls.life/get-text/{translation}/{book['id']}/{chapter}/"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; bible-study/1.0)",
+        "Accept": "application/json",
+    }
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        resp = await client.get(url, headers=headers)
         resp.raise_for_status()
         payload = resp.json()
 
-    body = payload.get("data") or {}
-    raw_verses = body.get("verses") or []
-    verses = [
-        {"number": i + 1, "text": text.strip()}
-        for i, text in enumerate(raw_verses)
-        if isinstance(text, str) and text.strip()
-    ]
+    if not isinstance(payload, list) or not payload:
+        raise RuntimeError(f"{version['label']} {book['name_ko']} {chapter}장을 가져오지 못했습니다.")
+
+    verses: list[dict[str, Any]] = []
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        number = item.get("verse")
+        raw = str(item.get("text") or "")
+        text = _HTML_TAG_RE.sub(" ", raw)
+        text = re.sub(r"\s+", " ", text).strip()
+        if number is None or not text:
+            continue
+        verses.append({"number": int(number), "text": text})
+
+    if not verses:
+        raise RuntimeError(f"{version['label']} {book['name_ko']} {chapter}장을 파싱하지 못했습니다.")
+
     return {
         "version": version["id"],
         "versionLabel": version["label"],
@@ -166,7 +183,7 @@ async def _fetch_midvash(
         "bookNameEn": book["name_en"],
         "chapter": chapter,
         "verses": verses,
-        "source": "midvash",
+        "source": "bolls",
         "note": version["note"],
     }
 

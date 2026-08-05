@@ -1,4 +1,4 @@
-"""Bible book metadata shared by Midvash and Korean Bible Society sources."""
+"""Bible book metadata shared across Bible text sources."""
 
 from __future__ import annotations
 
