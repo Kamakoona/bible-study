@@ -65,31 +65,15 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: end;
-  justify-content: space-between;
-  gap: 1.25rem 2rem;
-  padding: 1.15rem clamp(1rem, 3vw, 2.5rem) 0.95rem;
+  justify-content: flex-start;
+  gap: 1rem;
+  padding: 1rem clamp(1rem, 3vw, 2.5rem) 0.85rem;
   border-bottom: 1px solid rgba(22, 32, 40, 0.1);
   background:
     linear-gradient(180deg, rgba(238, 243, 244, 0.94), rgba(232, 238, 240, 0.88));
   backdrop-filter: blur(12px);
   box-shadow: 0 8px 24px rgba(22, 32, 40, 0.06);
   animation: rise 0.7s ease both;
-}
-
-.brand-mark {
-  margin: 0;
-  font-family: var(--display);
-  font-size: clamp(2rem, 4vw, 2.85rem);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
-  color: var(--accent-deep);
-}
-
-.brand-sub {
-  margin: 0.35rem 0 0;
-  color: var(--ink-soft);
-  font-size: 0.95rem;
 }
 
 .nav-controls {
@@ -597,10 +581,6 @@ mark.search-hit.is-current {
     top: 0.5rem;
     align-self: start;
     height: min(58dvh, 32rem);
-  }
-
-  .brand-mark {
-    font-size: 2rem;
   }
 
   .nav-primary {
