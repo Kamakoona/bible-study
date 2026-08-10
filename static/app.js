@@ -199,9 +199,7 @@ function updateSearchUI() {
 
 function applySearch() {
   renderVerses(els.leftBody, state.leftVerses);
-  if (state.rightVerses?.unavailable) {
-    renderVerses(els.rightBody, state.rightVerses);
-  } else if (state.rightVerses?.verses) {
+  if (state.rightVerses?.unavailable || state.rightVerses?.verses) {
     renderVerses(els.rightBody, state.rightVerses);
   }
   updateSearchUI();
@@ -439,10 +437,8 @@ async function loadPanes() {
   if (versionMeta && !versionMeta.available) {
     els.rightTitle.textContent = versionMeta.label;
     els.rightMeta.textContent = versionMeta.note;
-    renderVerses(els.rightBody, {
-      unavailable: true,
-      message: versionMeta.note,
-    });
+    state.rightVerses = { unavailable: true, message: versionMeta.note };
+    renderVerses(els.rightBody, state.rightVerses);
     try {
       const left = await api(
         `/api/chapter?version=kor&book=${encodeURIComponent(state.bookSlug)}&chap=${state.chapter}`,

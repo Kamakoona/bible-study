@@ -341,28 +341,6 @@ mark.search-hit.is-current {
   padding-bottom: 0.05rem;
 }
 
-.ghost-btn {
-  width: 2.4rem;
-  height: 2.4rem;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(255, 252, 246, 0.9);
-  color: var(--ink);
-  font-size: 1.05rem;
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-.ghost-btn:hover:not(:disabled) {
-  background: #fff;
-  transform: translateY(-1px);
-}
-
-.ghost-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 .reader {
   flex: 1 1 auto;
   display: grid;
