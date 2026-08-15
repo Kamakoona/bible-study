@@ -361,20 +361,10 @@ mark.search-hit.is-current {
   min-height: 0;
 }
 
-.pane-flip {
+.flip-btn {
   position: absolute;
   top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   z-index: 15;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  pointer-events: none;
-}
-
-.flip-btn {
-  pointer-events: auto;
   width: 2.4rem;
   height: 2.4rem;
   border: 1px solid var(--line);
@@ -389,9 +379,24 @@ mark.search-hit.is-current {
   transition: background 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
 }
 
-.flip-btn:hover:not(:disabled) {
+.flip-btn-start {
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+.flip-btn-end {
+  right: 0;
+  transform: translate(50%, -50%);
+}
+
+.flip-btn-start:hover:not(:disabled) {
   background: #fff;
-  transform: scale(1.08);
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.flip-btn-end:hover:not(:disabled) {
+  background: #fff;
+  transform: translate(50%, -50%) scale(1.08);
 }
 
 .flip-btn:disabled {
@@ -593,7 +598,7 @@ mark.search-hit.is-current {
     min-height: min(58dvh, 32rem);
   }
 
-  .pane-flip {
+  .flip-btn {
     display: none;
   }
 
