@@ -431,6 +431,38 @@ function syncHighlight(verseNumber) {
   }
 }
 
+function citationForSelection(container, chapterData, range) {
+  if (!chapterData || chapterData.unavailable || !chapterData.verses) return null;
+  let min = null;
+  let max = null;
+  for (const el of container.querySelectorAll(".verse")) {
+    if (!range.intersectsNode(el)) continue;
+    const num = Number(el.dataset.verse);
+    if (min === null || num < min) min = num;
+    if (max === null || num > max) max = num;
+  }
+  if (min === null) return null;
+  const verseLabel = min === max ? `${min}` : `${min}~${max}`;
+  return `${chapterData.versionLabel} ${chapterData.bookName} ${chapterData.chapter}:${verseLabel}`;
+}
+
+function handleCopy(event) {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
+  const text = selection.toString();
+  if (!text.trim()) return;
+
+  const range = selection.getRangeAt(0);
+  const citations = [
+    citationForSelection(els.leftBody, state.leftVerses, range),
+    citationForSelection(els.rightBody, state.rightVerses, range),
+  ].filter(Boolean);
+  if (!citations.length) return;
+
+  event.preventDefault();
+  event.clipboardData.setData("text/plain", `${text}\n\n(${citations.join(" / ")})`);
+}
+
 async function loadPanes() {
   const book = currentBook();
   const label = `${book.name_ko} ${state.chapter}장`;
@@ -583,6 +615,7 @@ function bindEvents() {
       els.searchInput.select();
     }
   });
+  document.addEventListener("copy", handleCopy);
 }
 
 async function init() {
