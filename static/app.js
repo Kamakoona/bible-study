@@ -41,6 +41,8 @@ const els = {
   searchNextBtn: document.getElementById("search-next-btn"),
   prevBtn: document.getElementById("prev-btn"),
   nextBtn: document.getElementById("next-btn"),
+  prevFlipBtn: document.getElementById("prev-flip-btn"),
+  nextFlipBtn: document.getElementById("next-flip-btn"),
   leftBody: document.getElementById("left-body"),
   rightBody: document.getElementById("right-body"),
   leftMeta: document.getElementById("left-meta"),
@@ -135,9 +137,12 @@ function fillVersions() {
 function updateNavButtons() {
   const book = currentBook();
   const index = state.books.findIndex((b) => b.slug === state.bookSlug);
-  els.prevBtn.disabled = state.chapter <= 1 && index <= 0;
-  els.nextBtn.disabled =
-    state.chapter >= book.chapters && index >= state.books.length - 1;
+  const atStart = state.chapter <= 1 && index <= 0;
+  const atEnd = state.chapter >= book.chapters && index >= state.books.length - 1;
+  els.prevBtn.disabled = atStart;
+  els.nextBtn.disabled = atEnd;
+  els.prevFlipBtn.disabled = atStart;
+  els.nextFlipBtn.disabled = atEnd;
 }
 
 function escapeRegExp(text) {
@@ -199,9 +204,7 @@ function updateSearchUI() {
 
 function applySearch() {
   renderVerses(els.leftBody, state.leftVerses);
-  if (state.rightVerses?.unavailable) {
-    renderVerses(els.rightBody, state.rightVerses);
-  } else if (state.rightVerses?.verses) {
+  if (state.rightVerses?.unavailable || state.rightVerses?.verses) {
     renderVerses(els.rightBody, state.rightVerses);
   }
   updateSearchUI();
@@ -439,10 +442,8 @@ async function loadPanes() {
   if (versionMeta && !versionMeta.available) {
     els.rightTitle.textContent = versionMeta.label;
     els.rightMeta.textContent = versionMeta.note;
-    renderVerses(els.rightBody, {
-      unavailable: true,
-      message: versionMeta.note,
-    });
+    state.rightVerses = { unavailable: true, message: versionMeta.note };
+    renderVerses(els.rightBody, state.rightVerses);
     try {
       const left = await api(
         `/api/chapter?version=kor&book=${encodeURIComponent(state.bookSlug)}&chap=${state.chapter}`,
@@ -550,6 +551,8 @@ function bindEvents() {
   });
   els.prevBtn.addEventListener("click", goPrev);
   els.nextBtn.addEventListener("click", goNext);
+  els.prevFlipBtn.addEventListener("click", goPrev);
+  els.nextFlipBtn.addEventListener("click", goNext);
   els.searchInput.addEventListener("input", () => {
     state.searchQuery = els.searchInput.value;
     state.searchHitIndex = 0;
