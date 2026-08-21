@@ -1,0 +1,6 @@
+{
+  "name": "Bible Study",
+  "description": "A Korean-English parallel Bible reader and comparison tool featuring multiple translations with synchronized scrolling and verse highlighting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
