@@ -200,6 +200,19 @@ body {
   min-width: 6.5rem;
 }
 
+.clock-control time {
+  display: inline-block;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 252, 246, 0.9);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .search-control {
   flex: 0 0 auto;
   min-width: 14rem;
