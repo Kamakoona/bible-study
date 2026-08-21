@@ -34,6 +34,7 @@ const els = {
   versionSelect: document.getElementById("version-select"),
   fontSelect: document.getElementById("font-select"),
   sizeSelect: document.getElementById("size-select"),
+  clock: document.getElementById("clock"),
   searchInput: document.getElementById("search-input"),
   searchStatus: document.getElementById("search-status"),
   searchNav: document.querySelector(".search-nav"),
@@ -78,6 +79,28 @@ function applyReaderStyle() {
   root.style.setProperty("--reader-size", SIZE_MAP[state.size]);
   els.fontSelect.value = state.font;
   els.sizeSelect.value = state.size;
+}
+
+const CLOCK_FORMAT = new Intl.DateTimeFormat("ko-KR", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+});
+
+function updateClock() {
+  const now = new Date();
+  els.clock.dateTime = now.toISOString();
+  els.clock.textContent = CLOCK_FORMAT.format(now);
+}
+
+function startClock() {
+  updateClock();
+  setInterval(updateClock, 1000);
 }
 
 async function api(path) {
@@ -623,6 +646,7 @@ async function init() {
   applyReaderStyle();
   bindEvents();
   bindSharedScroll();
+  startClock();
   const [booksRes, versionsRes] = await Promise.all([
     api("/api/books"),
     api("/api/versions?pane=right"),
