@@ -13,6 +13,7 @@ const SIZE_MAP = {
 };
 
 const PREFS_KEY = "bible-study-reader-prefs";
+const LAST_READ_KEY = "bible-study-last-read";
 
 const state = {
   books: [],
@@ -44,6 +45,7 @@ const els = {
   nextBtn: document.getElementById("next-btn"),
   prevFlipBtn: document.getElementById("prev-flip-btn"),
   nextFlipBtn: document.getElementById("next-flip-btn"),
+  resumeBtn: document.getElementById("resume-btn"),
   leftBody: document.getElementById("left-body"),
   rightBody: document.getElementById("right-body"),
   leftMeta: document.getElementById("left-meta"),
@@ -71,6 +73,53 @@ function savePrefs() {
     PREFS_KEY,
     JSON.stringify({ font: state.font, size: state.size }),
   );
+}
+
+function saveLastRead() {
+  try {
+    localStorage.setItem(
+      LAST_READ_KEY,
+      JSON.stringify({ bookSlug: state.bookSlug, chapter: state.chapter }),
+    );
+  } catch {
+    /* ignore storage errors */
+  }
+}
+
+function loadLastRead() {
+  try {
+    const raw = localStorage.getItem(LAST_READ_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed.bookSlug !== "string" || typeof parsed.chapter !== "number") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function updateResumeButton() {
+  const last = loadLastRead();
+  if (!last) {
+    els.resumeBtn.hidden = true;
+    return;
+  }
+  const book = state.books.find((b) => b.slug === last.bookSlug);
+  els.resumeBtn.hidden = false;
+  els.resumeBtn.disabled = state.bookSlug === last.bookSlug && state.chapter === last.chapter;
+  els.resumeBtn.title = book ? `이어서 읽기: ${book.name_ko} ${last.chapter}장` : "이어서 읽기";
+}
+
+function resumeReading() {
+  const last = loadLastRead();
+  if (!last) return;
+  const book = state.books.find((b) => b.slug === last.bookSlug);
+  if (!book) return;
+  state.bookSlug = last.bookSlug;
+  state.chapter = Math.min(Math.max(1, last.chapter), book.chapters);
+  els.bookSelect.value = state.bookSlug;
+  fillChapters();
+  loadPanes();
 }
 
 function applyReaderStyle() {
@@ -486,12 +535,14 @@ function handleCopy(event) {
   event.clipboardData.setData("text/plain", `${text}\n\n(${citations.join(" / ")})`);
 }
 
-async function loadPanes() {
+async function loadPanes({ persist = true } = {}) {
   const book = currentBook();
   const label = `${book.name_ko} ${state.chapter}장`;
   els.leftBody.innerHTML = `<p class="placeholder">${label} 불러오는 중…</p>`;
   els.rightBody.innerHTML = `<p class="placeholder">${label} 불러오는 중…</p>`;
   updateNavButtons();
+  updateResumeButton();
+  if (persist) saveLastRead();
 
   const versionMeta = state.versions.find((v) => v.id === state.compareVersion);
   if (versionMeta && !versionMeta.available) {
@@ -608,6 +659,7 @@ function bindEvents() {
   els.nextBtn.addEventListener("click", goNext);
   els.prevFlipBtn.addEventListener("click", goPrev);
   els.nextFlipBtn.addEventListener("click", goNext);
+  els.resumeBtn.addEventListener("click", resumeReading);
   els.searchInput.addEventListener("input", () => {
     state.searchQuery = els.searchInput.value;
     state.searchHitIndex = 0;
@@ -656,7 +708,7 @@ async function init() {
   fillBooks();
   fillChapters();
   fillVersions();
-  await loadPanes();
+  await loadPanes({ persist: false });
 }
 
 init().catch((err) => {
