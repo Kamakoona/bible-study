@@ -13,7 +13,6 @@ const SIZE_MAP = {
 };
 
 const PREFS_KEY = "bible-study-reader-prefs";
-const LAST_READ_KEY = "bible-study-last-read";
 
 const state = {
   books: [],
@@ -75,31 +74,33 @@ function savePrefs() {
   );
 }
 
-function saveLastRead() {
+async function saveLastRead() {
   try {
-    localStorage.setItem(
-      LAST_READ_KEY,
-      JSON.stringify({ bookSlug: state.bookSlug, chapter: state.chapter }),
-    );
+    await fetch("/api/last-read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bookSlug: state.bookSlug, chapter: state.chapter }),
+    });
   } catch {
-    /* ignore storage errors */
+    /* ignore network errors */
   }
 }
 
-function loadLastRead() {
+async function loadLastRead() {
   try {
-    const raw = localStorage.getItem(LAST_READ_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (typeof parsed.bookSlug !== "string" || typeof parsed.chapter !== "number") return null;
-    return parsed;
+    const res = await fetch("/api/last-read");
+    if (!res.ok) return null;
+    const json = await res.json();
+    const data = json.data;
+    if (!data || typeof data.bookSlug !== "string" || typeof data.chapter !== "number") return null;
+    return data;
   } catch {
     return null;
   }
 }
 
-function updateResumeButton() {
-  const last = loadLastRead();
+async function updateResumeButton() {
+  const last = await loadLastRead();
   if (!last) {
     els.resumeBtn.hidden = true;
     return;
@@ -110,8 +111,8 @@ function updateResumeButton() {
   els.resumeBtn.title = book ? `이어서 읽기: ${book.name_ko} ${last.chapter}장` : "이어서 읽기";
 }
 
-function resumeReading() {
-  const last = loadLastRead();
+async function resumeReading() {
+  const last = await loadLastRead();
   if (!last) return;
   const book = state.books.find((b) => b.slug === last.bookSlug);
   if (!book) return;
@@ -541,8 +542,8 @@ async function loadPanes({ persist = true } = {}) {
   els.leftBody.innerHTML = `<p class="placeholder">${label} 불러오는 중…</p>`;
   els.rightBody.innerHTML = `<p class="placeholder">${label} 불러오는 중…</p>`;
   updateNavButtons();
-  updateResumeButton();
-  if (persist) saveLastRead();
+  await updateResumeButton();
+  if (persist) await saveLastRead();
 
   const versionMeta = state.versions.find((v) => v.id === state.compareVersion);
   if (versionMeta && !versionMeta.available) {
